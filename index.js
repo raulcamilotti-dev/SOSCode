@@ -167,13 +167,31 @@ function auth(req, res, next) {
 // ===============================
 // ME (TESTE DE LOGIN)
 // ===============================
-app.get('/me', auth, (req, res) => {
-  res.json({
-    user_id: req.user.sub,
-    role: req.user.role,
-  });
-});
+app.get('/me/properties', auth, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `
+      SELECT
+        p.id,
+        p.address,
+        p.city,
+        p.state,
+        p.created_at
+      FROM users u
+      JOIN customers c ON c.user_id = u.id
+      JOIN properties p ON p.customer_id = c.id
+      WHERE u.id = $1
+      ORDER BY p.created_at DESC
+      `,
+      [req.user.sub]
+    );
 
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erro ao buscar imóveis' });
+  }
+});
 // ===============================
 // START SERVER
 // ===============================
