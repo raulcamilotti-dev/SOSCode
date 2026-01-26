@@ -1,17 +1,13 @@
 import express from "express";
-import db from "./db";
+import routes from "./routes";
+import { errorMiddleware } from "./middlewares/error.middleware";
 
 const app = express();
 
 app.use(express.json());
+app.use(routes);
 
-app.get("/", (_req, res) => {
-  res.send("API ONLINE");
-});
-
-app.get("/health/db", async (_req, res) => {
-  await db.query("SELECT 1");
-  res.json({ ok: true });
-});
+// 👇 ÚLTIMO middleware
+app.use(errorMiddleware);
 
 export default app;
