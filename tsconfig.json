@@ -7,7 +7,7 @@
     "strict": true,
     "skipLibCheck": true,
     "outDir": "dist"
-  },
+  }, 
   "include": ["**/*.ts"],
   "exclude": ["node_modules"]
 }
