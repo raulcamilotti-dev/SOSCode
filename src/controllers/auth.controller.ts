@@ -1,55 +1,52 @@
 import { Request, Response } from "express";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import db from "../db";
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 
-interface AuthBody {
-  cpf: string;
-  password: string;
-}
-
 /**
  * REGISTER
  */
 export async function register(req: Request, res: Response) {
-  const { cpf, password } = req.body as AuthBody;
+  const { cpf, password } = req.body;
 
   if (!cpf || !password) {
     return res.status(400).json({ message: "CPF e senha obrigatórios" });
   }
 
-  const hashedPassword = await bcrypt.hash(password, 10);
+  // verifica se já existe
+  const exists = await db.query(
+    "SELECT id FROM users WHERE cpf = $1",
+    [cpf]
+  );
 
-  try {
-    await db.query(
-      "INSERT INTO users (cpf, password) VALUES ($1, $2)",
-      [cpf, hashedPassword]
-    );
-
-    return res.status(201).json({ message: "Usuário criado" });
-  } catch (err: any) {
-    if (err.code === "23505") {
-      return res.status(409).json({ message: "Usuário já existe" });
-    }
-
-    return res.status(500).json({ message: "Erro ao criar usuário" });
+  if (exists.rowCount > 0) {
+    return res.status(409).json({ message: "Usuário já existe" });
   }
+
+  const hash = await bcrypt.hash(password, 10);
+
+  const result = await db.query(
+    "INSERT INTO users (cpf, password) VALUES ($1, $2) RETURNING id, cpf",
+    [cpf, hash]
+  );
+
+  return res.status(201).json(result.rows[0]);
 }
 
 /**
  * LOGIN
  */
 export async function login(req: Request, res: Response) {
-  const { cpf, password } = req.body as AuthBody;
+  const { cpf, password } = req.body;
 
   if (!cpf || !password) {
     return res.status(400).json({ message: "CPF e senha obrigatórios" });
   }
 
   const result = await db.query(
-    "SELECT id, password FROM users WHERE cpf = $1",
+    "SELECT id, cpf, password FROM users WHERE cpf = $1",
     [cpf]
   );
 
@@ -60,12 +57,13 @@ export async function login(req: Request, res: Response) {
   const user = result.rows[0];
 
   const valid = await bcrypt.compare(password, user.password);
+
   if (!valid) {
     return res.status(401).json({ message: "Credenciais inválidas" });
   }
 
   const token = jwt.sign(
-    { userId: user.id },
+    { id: user.id, cpf: user.cpf },
     JWT_SECRET,
     { expiresIn: "1d" }
   );

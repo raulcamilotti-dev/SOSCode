@@ -1,10 +1,18 @@
-import { Router } from "express";
+import express from "express";
 import authRoutes from "./auth.routes";
 import healthRoutes from "./health.routes";
 
-const router = Router();
+const app = express();
 
-router.use("/auth", authRoutes);
-router.use("/health", healthRoutes);
+app.use(express.json());
 
-export default router;
+app.use("/auth", authRoutes);
+app.use("/health", healthRoutes);
+
+app.get("/", (_, res) => {
+  res.send("API ONLINE");
+});
+
+app.listen(3000, () => {
+  console.log("API rodando na porta 3000");
+});
